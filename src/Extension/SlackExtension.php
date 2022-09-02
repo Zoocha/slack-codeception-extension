@@ -2,9 +2,11 @@
 
 namespace Codeception\Extension;
 
+use Codeception\Event\PrintResultEvent;
 use Codeception\Events;
 use Codeception\Exception\ExtensionException;
 use Codeception\Extension;
+use Codeception\ResultAggregator;
 use Maknz\Slack\Client;
 use Maknz\Slack\Message;
 use PHPUnit\Framework\TestFailure;
@@ -113,7 +115,7 @@ class SlackExtension extends Extension
      *
      * @throws ExtensionException in case required configuration for 'webhook' is missing
      */
-    public function _initialize()
+    public function _initialize(): void
     {
         if (!isset($this->config['webhook']) or empty($this->config['webhook'])) {
             throw new ExtensionException($this, "configuration for 'webhook' is missing");
@@ -209,7 +211,7 @@ class SlackExtension extends Extension
      * This method is fired when the event 'result.print.after' occurs.
      * @param \Codeception\Event\PrintResultEvent $e
      */
-    public function sendTestResults(\Codeception\Event\PrintResultEvent $e)
+    public function sendTestResults(PrintResultEvent $e)
     {
         if (is_null($this->client)) {
             return;
@@ -242,31 +244,32 @@ class SlackExtension extends Extension
     /**
      * Sends success message to Slack channels.
      *
-     * @param TestResult $result
+     * @param ResultAggregator $result
      */
-    private function sendSuccessMessage(TestResult $result)
+    private function sendSuccessMessage(ResultAggregator $result)
     {
-        $numberOfTests = $result->count();
+        $numberOfTests = $result->testCount();
 
         foreach ($this->channels as $channel) {
             $this->message->setChannel(trim($channel));
-            $this->message->send(
+            $this->message->setText(
                 ':white_check_mark: '
                 . $this->messagePrefix
                 . $numberOfTests . ' of ' . $numberOfTests . ' tests passed.'
                 . str_replace('\\n', PHP_EOL, $this->messageSuffix)
             );
+            $this->client->sendMessage($this->message);
         }
     }
 
     /**
      * Sends fail message to Slack channels.
      *
-     * @param TestResult $result
+     * @param ResultAggregator $result
      */
-    private function sendFailMessage(TestResult $result)
+    private function sendFailMessage(ResultAggregator $result)
     {
-        $numberOfTests = $result->count();
+        $numberOfTests = $result->testCount();
         $numberOfFailedTests = $result->failureCount() + $result->errorCount();
 
         if (true === $this->extended) {
@@ -279,13 +282,14 @@ class SlackExtension extends Extension
         foreach ($targetChannels as $channel) {
             $this->message->setChannel(trim($channel));
 
-            $this->message->send(
+            $this->message->setText(
                 ':interrobang: '
                 . $this->messagePrefix
                 . $numberOfFailedTests . ' of ' . $numberOfTests . ' tests failed.'
                 . str_replace('\\n', PHP_EOL, $this->messageSuffix)
                 . $this->messageSuffixOnFail
             );
+            $this->client->sendMessage($this->message);
         }
     }
 
