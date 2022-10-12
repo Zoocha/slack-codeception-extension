@@ -294,10 +294,9 @@ class SlackExtension extends Extension
     }
 
     /**
-     *
-     * @param TestResult $result
+     * @param ResultAggregator $result
      */
-    private function attachExtendedInformation(Message &$message, TestResult $result) {
+    private function attachExtendedInformation(Message &$message, ResultAggregator $result) {
         $fields = [];
         $failures = array_merge($result->failures(), $result->errors());
         $omittedFailures = 0;
@@ -308,9 +307,9 @@ class SlackExtension extends Extension
 
         foreach ($failures as $failure) {
             /**
-             * @var $failure TestFailure
+             * @var $failure \Codeception\Event\FailEvent
              */
-            $exceptionMsg = strtok($failure->exceptionMessage(), "\n");
+            $exceptionMsg = strtok($failure->getFail(), "\n");
 
             $result = json_decode($exceptionMsg);
 
@@ -323,7 +322,7 @@ class SlackExtension extends Extension
             }
 
             $fields[] = [
-                'title' => $failure->getTestName(),
+                'title' => $failure->getTest()->getSignature(),
                 'value' => $exceptionMsg
             ];
         }
